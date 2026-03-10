@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>漢字宿題用プリントメーカー</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&display=swap');
+    
+    body {
+      font-family: 'Klee One', "UD Digi Kyokasho NK-R", "Yu Mincho", serif;
+      background-color: #f9fafb;
+    }
+    
+    /* 縦書き用の設定 */
+    .vertical-rl {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+    }
+    .horizontal-tb {
+      writing-mode: horizontal-tb;
+    }
+    
+    /* --- A4縦向きの厳密な印刷設定 --- */
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+      body {
+        background-color: white;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .no-print {
+        display: none !important;
+      }
+      /* 印刷プレビュー領域をA4用紙全体に広げる */
+      .print-container {
+        box-shadow: none !important;
+        margin: 0 !important;
+        width: 210mm !important; 
+        height: 297mm !important;
+        border: none !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+      }
+      /* スクロールバーなどを消す */
+      #app > div > div:nth-child(2) {
+        overflow: visible !important;
+      }
+    }
+    
+    /* --- マス目のデザイン (点線の十字リーダー) --- */
+    .masu::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      border-top: 1px dashed #bbb; /* 少し薄めの破線横線 */
+      pointer-events: none;
+      z-index: 1;
+    }
+    .masu::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      border-left: 1px dashed #bbb; /* 少し薄めの破線縦線 */
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    // --- 初期データ定義 (教科書の学習順に完全対応) ---
+    const INITIAL_DATA_1 = [
+      { id: 1, words: ["一", "二"] },
+      { id: 2, words: ["三", "四"] },
+      { id: 3, words: ["五", "六"] },
+      { id: 4, words: ["七", "八"] },
+      { id: 5, words: ["九", "十"] },
+      { id: 6, words: ["日", "月"] },
+      { id: 7, words: ["木", "山"] },
+      { id: 8, words: ["川", "田"] },
+      { id: 9, words: ["土", "人"] },
+      { id: 10, words: ["口", "目"] },
+      { id: 11, words: ["耳", "手"] },
+      { id: 12, words: ["足", "大"] },
+      { id: 13, words: ["小", "中"] },
+      { id: 14, words: ["上", "下"] },
+      { id: 15, words: ["右", "左"] },
+      { id: 16, words: ["女", "男"] },
+      { id: 17, words: ["子", "水"] },
+      { id: 18, words: ["火", "空"] },
+      { id: 19, words: ["天", "気"] },
+      { id: 20, words: ["雨", "白"] },
+      { id: 21, words: ["赤", "青"] },
+      { id: 22, words: ["音", "出"] },
+      { id: 23, words: ["入", "立"] },
+      { id: 24, words: ["休", "見"] },
+      { id: 25, words: ["力", "糸"] },
+      { id: 26, words: ["字", "文"] },
+      { id: 27, words: ["本", "名"] },
+      { id: 28, words: ["正", "年"] },
+      { id: 29, words: ["早", "百"] },
+      { id: 30, words: ["千", "円"] },
+      { id: 31, words: ["車", "王"] },
+      { id: 32, words: ["玉", "貝"] },
+      { id: 33, words: ["草", "花"] },
+      { id: 34, words: ["竹", "虫"] },
+      { id: 35, words: ["犬", "林"] },
+      { id: 36, words: ["森", "村"] },
+      { id: 37, words: ["町", "校"] },
+      { id: 38, words: ["学", "先"] },
+      { id: 39, words: ["生", "金"] },
+      { id: 40, words: ["石", "夕"] }
+    ];
+
+    const INITIAL_DATA_2 = [
+      { id: 1, words: ["春", "夏", "秋"] },
+      { id: 2, words: ["冬", "朝", "昼"] },
+      { id: 3, words: ["夜", "晴", "雪"] },
+      { id: 4, words: ["雲", "星", "海"] },
+      { id: 5, words: ["池", "谷", "岩"] },
+      { id: 6, words: ["地", "風", "光"] },
+      { id: 7, words: ["南", "北", "東"] },
+      { id: 8, words: ["西", "遠", "近"] },
+      { id: 9, words: ["前", "後", "内"] },
+      { id: 10, words: ["外", "広", "明"] },
+      { id: 11, words: ["新", "古", "同"] },
+      { id: 12, words: ["多", "少", "太"] },
+      { id: 13, words: ["細", "長", "高"] },
+      { id: 14, words: ["丸", "角", "直"] },
+      { id: 15, words: ["線", "点", "形"] },
+      { id: 16, words: ["色", "黄", "黒"] },
+      { id: 17, words: ["絵", "画", "図"] },
+      { id: 18, words: ["工", "麦", "米"] },
+      { id: 19, words: ["茶", "肉", "牛"] },
+      { id: 20, words: ["馬", "魚", "鳥"] },
+      { id: 21, words: ["羽", "鳴", "毛"] },
+      { id: 22, words: ["弓", "矢", "刀"] },
+      { id: 23, words: ["走", "歩", "止"] },
+      { id: 24, words: ["通", "活", "行"] },
+      { id: 25, words: ["来", "帰", "回"] },
+      { id: 26, words: ["当", "引", "用"] },
+      { id: 27, words: ["合", "切", "交"] },
+      { id: 28, words: ["答", "門", "戸"] },
+      { id: 29, words: ["室", "里", "野"] },
+      { id: 30, words: ["原", "市", "園"] },
+      { id: 31, words: ["京", "寺", "社"] },
+      { id: 32, words: ["場", "店", "番"] },
+      { id: 33, words: ["毎", "週", "曜"] },
+      { id: 34, words: ["時", "分", "半"] },
+      { id: 35, words: ["今", "算", "数"] },
+      { id: 36, words: ["計", "科", "理"] },
+      { id: 37, words: ["読", "書", "語"] },
+      { id: 38, words: ["記", "話", "聞"] },
+      { id: 39, words: ["言", "思", "考"] },
+      { id: 40, words: ["知", "才", "親"] },
+      { id: 41, words: ["兄", "弟", "姉"] },
+      { id: 42, words: ["妹", "父", "母"] },
+      { id: 43, words: ["友", "顔", "頭"] },
+      { id: 44, words: ["首", "心", "体"] },
+      { id: 45, words: ["声", "歌", "楽"] },
+      { id: 46, words: ["元", "作", "売"] },
+      { id: 47, words: ["買", "何", "万"] },
+      { id: 48, words: ["船", "汽", "電"] },
+      { id: 49, words: ["台", "紙", "会"] },
+      { id: 50, words: ["家", "教", "間"] },
+      { id: 51, words: ["自", "公", "強"] },
+      { id: 52, words: ["弱", "食", "道"] },
+      { id: 53, words: ["国", "組", "方"] },
+      { id: 54, words: ["午", "", ""] }
+    ];
+
+    // --- 状態管理 (新しいバージョンv7へ移行) ---
+    let state = {
+      activeTab: 'print',
+      grade: Number(localStorage.getItem('kanjiGrade_v7')) || 1,
+      printId: 1,
+      stock1: JSON.parse(localStorage.getItem('kanjiStock1_v7')) || INITIAL_DATA_1,
+      stock2: JSON.parse(localStorage.getItem('kanjiStock2_v7')) || INITIAL_DATA_2
+    };
+
+    function saveState() {
+      localStorage.setItem('kanjiGrade_v7', state.grade.toString());
+      localStorage.setItem('kanjiStock1_v7', JSON.stringify(state.stock1));
+      localStorage.setItem('kanjiStock2_v7', JSON.stringify(state.stock2));
+    }
+
+    // --- UI レンダリング関数群 ---
+
+    // 1. ナビゲーションタブ
+    function renderTabs() {
+      return `
+        <div class="no-print bg-sky-600 text-white shadow-md z-10 flex-shrink-0">
+          <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center px-4">
+            <h1 class="text-xl font-bold py-4 pr-8 border-b border-sky-500 sm:border-none w-full sm:w-auto text-center sm:text-left">
+              📝 漢字宿題用プリントメーカー
+            </h1>
+            <div class="flex w-full sm:w-auto overflow-x-auto">
+              <button onclick="changeTab('print')" class="px-6 py-4 font-bold whitespace-nowrap transition-colors border-b-4 ${state.activeTab === 'print' ? 'bg-sky-700 border-yellow-400' : 'border-transparent hover:bg-sky-500'}">🖨️ プリント作成</button>
+              <button onclick="changeTab('stock1')" class="px-6 py-4 font-bold whitespace-nowrap transition-colors border-b-4 ${state.activeTab === 'stock1' ? 'bg-sky-700 border-emerald-400' : 'border-transparent hover:bg-sky-500'}">📁 1年生用ストック (漢字2つ)</button>
+              <button onclick="changeTab('stock2')" class="px-6 py-4 font-bold whitespace-nowrap transition-colors border-b-4 ${state.activeTab === 'stock2' ? 'bg-sky-700 border-emerald-400' : 'border-transparent hover:bg-sky-500'}">📁 2年生用ストック (漢字3つ)</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 2. 印刷設定パネル
+    function renderSettings() {
+      const data = state.grade === 1 ? state.stock1 : state.stock2;
+      const options = data.map(item => `
+        <option value="${item.id}" ${state.printId === item.id ? 'selected' : ''}>
+          番号 ${item.id} （${item.words.filter(w=>w).join(', ') || '未入力'}）
+        </option>
+      `).join('');
+
+      return `
+        <div class="w-full md:w-80 bg-white p-6 border-r border-gray-200 no-print shadow-sm z-10 flex flex-col flex-shrink-0">
+          <h2 class="text-lg font-bold mb-6 text-gray-700 border-b pb-2">印刷設定</h2>
+          
+          <div class="mb-6">
+            <label class="block mb-2 font-bold text-gray-600 text-sm">学年 (レイアウト)</label>
+            <div class="flex bg-gray-100 p-1 rounded-lg">
+              <button onclick="changeGrade(1)" class="flex-1 py-2 rounded-md font-bold transition-all ${state.grade === 1 ? 'bg-white shadow text-sky-600' : 'text-gray-500 hover:bg-gray-200'}">1年生用</button>
+              <button onclick="changeGrade(2)" class="flex-1 py-2 rounded-md font-bold transition-all ${state.grade === 2 ? 'bg-white shadow text-sky-600' : 'text-gray-500 hover:bg-gray-200'}">2年生用</button>
+            </div>
+          </div>
+
+          <div class="mb-8">
+            <label class="block mb-2 font-bold text-gray-600 text-sm">プリント番号を選択</label>
+            <select onchange="changePrintId(Number(this.value))" class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer">
+              ${options}
+            </select>
+          </div>
+
+          <div class="mt-auto">
+            <p class="text-sm text-gray-500 mb-3 leading-relaxed">
+              ※ ブラウザの印刷ダイアログが開きます。<br>レイアウト設定で<strong class="text-gray-700 text-lg text-red-500">「縦」</strong>を選択してください。
+            </p>
+            <button onclick="window.print()" class="w-full bg-sky-500 text-white font-bold py-4 rounded-xl shadow-[0_4px_0_#0284c7] active:shadow-[0_0px_0_#0284c7] active:translate-y-1 transition-all flex justify-center items-center gap-2 text-lg">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+              A4（縦）で印刷
+            </button>
+            
+            <!-- クレジット表記 -->
+            <div class="mt-6 text-center text-xs font-semibold text-gray-400">
+              ©2026　漢字宿題用プリントメーカー　ＩＣＴ支援の杜
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 3. プリント領域
+    function renderPrintLayout() {
+      const data = state.grade === 1 ? state.stock1 : state.stock2;
+      const targetItem = data.find(item => item.id === state.printId) || data[0];
+      
+      if (!targetItem) return `<div class="flex items-center justify-center h-full text-gray-400">データがありません</div>`;
+
+      const grade = state.grade;
+      const words = [...targetItem.words];
+      const requiredWords = grade === 1 ? 2 : 3;
+      while(words.length < requiredWords) words.push("");
+
+      const nameColTitle = grade === 1 ? '一年生のかん字' : '二年生の漢字';
+      const rows = grade === 1 ? 8 : 10; // ★2年生は10行
+      
+      // レイアウトサイズの調整
+      const masuSize = grade === 1 ? 25 : 20; // ★2年生のマスを20mmに拡大
+      const furiWidth = 10; // ★2年生のふりがな列幅
+      const kotobaWidth = 22;
+      const headerHeight = grade === 1 ? 52 : 45; // ★2年生のヘッダー高さ
+      const totalHeight = headerHeight + (masuSize * rows);
+      const fontSizeNazori = grade === 1 ? 23 : 18.5; // ★なぞり書きの漢字サイズ
+      const translateY = grade === 1 ? '1.5mm' : '1.2mm'; // ★フォント特有の上寄りを補正
+      const nameBoxHeight = masuSize * 4; // ★名前枠は下から4マス分
+      
+      let wordBlocks = '';
+
+      if (grade === 1) {
+        words.forEach((word, index) => {
+          const char = word.charAt(0) || "";
+          
+          let nazoriRows = '';
+          for(let i=0; i<rows; i++) {
+             // masuにrelativeを追加し、十字線を引く。中央配置のズレを解消。
+             nazoriRows += `<div class="masu relative w-[${masuSize}mm] h-[${masuSize}mm] flex items-center justify-center border-b border-black last:border-b-0"><span class="relative z-10 text-[${fontSizeNazori}mm] text-gray-300 leading-none" style="transform: translateY(${translateY}); font-family: 'UD Digi Kyokasho NK-R', serif;">${char}</span></div>`;
+          }
+          
+          let utsushiRows = '';
+          for(let i=0; i<rows; i++) {
+             utsushiRows += `<div class="masu relative w-[${masuSize}mm] h-[${masuSize}mm] flex items-center justify-center border-b border-black last:border-b-0"></div>`;
+          }
+
+          let kotobaRows = '';
+          for(let i=0; i<rows; i++) {
+             // 2マス目(i=1)と5マス目(i=4)の下にボーダーを引いて3等分に近づける
+             const borderClass = (i === 1 || i === 4) ? 'border-b border-black' : '';
+             kotobaRows += `<div class="w-[${kotobaWidth}mm] h-[${masuSize}mm] ${borderClass} box-border"></div>`;
+          }
+          
+          const borderLeft = index !== words.length - 1 ? 'border-l border-black' : ''; 
+
+          wordBlocks += `
+            <div class="flex flex-row-reverse ${borderLeft}">
+              <!-- なぞり・うつし カラム -->
+              <div class="flex flex-col border-l border-black">
+                <div class="h-[46mm] border-b border-black relative box-border bg-white flex items-center justify-center">
+                  <!-- よみかた -->
+                  <div class="absolute top-1 right-1 bottom-1 flex flex-col items-center">
+                    <span class="text-[2.2mm] leading-none mb-1">よみかた</span>
+                    <span class="vertical-rl text-[4mm]">（</span>
+                    <span class="flex-1"></span>
+                    <span class="vertical-rl text-[4mm]">）</span>
+                  </div>
+                  <!-- 大きな漢字 -->
+                  <span class="text-[34mm] font-bold leading-none" style="font-family: 'Klee One', serif;">${char}</span>
+                  <!-- かく -->
+                  <div class="absolute top-1 bottom-1 left-1 flex flex-col items-center">
+                    <span class="vertical-rl text-[4mm]">（</span>
+                    <span class="flex-1"></span>
+                    <span class="vertical-rl text-[4mm] mb-1">）</span>
+                    <span class="text-[2.2mm] leading-none">かく</span>
+                  </div>
+                </div>
+                <!-- カラム見出し -->
+                <div class="h-[6mm] flex flex-row-reverse border-b border-black bg-white">
+                   <div class="w-[${masuSize}mm] flex items-center justify-center text-[2.5mm] font-bold">なぞりがき</div>
+                   <div class="w-[${masuSize}mm] border-r border-black flex items-center justify-center text-[2.5mm] font-bold">うつしがき</div>
+                </div>
+                <!-- マス目群 -->
+                <div class="flex flex-row-reverse bg-white">
+                  <div class="flex flex-col">${nazoriRows}</div>
+                  <div class="flex flex-col border-r border-black">${utsushiRows}</div>
+                </div>
+              </div>
+              
+              <!-- ことばあつめ カラム -->
+              <div class="w-[${kotobaWidth}mm] flex flex-col bg-white">
+                <div class="h-[52mm] border-b border-black flex flex-col relative box-border">
+                  <div class="h-[6mm] border-b border-black flex items-center justify-center text-[2.2mm] font-bold tracking-widest">ことばあつめ</div>
+                </div>
+                <div class="flex flex-col">${kotobaRows}</div>
+              </div>
+            </div>
+          `;
+        });
+      } else {
+        words.forEach((word, index) => {
+          const char = word.charAt(0) || "";
+          
+          // 右：ふりがな列
+          let furiRows = '';
+          for(let i=0; i<rows; i++) {
+             furiRows += `<div class="w-[${furiWidth}mm] h-[${masuSize}mm] border-b border-black last:border-b-0 box-border"></div>`;
+          }
+
+          // 中：なぞりがき列
+          let nazoriRows = '';
+          for(let i=0; i<rows; i++) {
+             nazoriRows += `<div class="masu relative w-[${masuSize}mm] h-[${masuSize}mm] flex items-center justify-center border-b border-black last:border-b-0"><span class="relative z-10 text-[${fontSizeNazori}mm] text-gray-300 leading-none" style="transform: translateY(${translateY}); font-family: 'UD Digi Kyokasho NK-R', serif;">${char}</span></div>`;
+          }
+          
+          // 左：うつしがき列
+          let utsushiRows = '';
+          for(let i=0; i<rows; i++) {
+             utsushiRows += `<div class="masu relative w-[${masuSize}mm] h-[${masuSize}mm] flex items-center justify-center border-b border-black last:border-b-0"></div>`;
+          }
+
+          // ブロック間は二重線
+          const borderLeft = index !== words.length - 1 ? 'border-l-[4px] border-double border-black' : ''; 
+          const blockWidth = furiWidth + masuSize * 2;
+
+          wordBlocks += `
+            <div class="w-[${blockWidth}mm] flex flex-col ${borderLeft} bg-white box-border">
+              <div class="h-[${headerHeight}mm] border-b-[4px] border-double border-black flex items-center justify-center box-border">
+                 <span class="text-[30mm] font-bold leading-none" style="font-family: 'Klee One', serif;">${char}</span>
+              </div>
+              <div class="flex flex-row-reverse flex-1">
+                 <!-- 右：ふりがな -->
+                 <div class="flex flex-col">${furiRows}</div>
+                 <!-- 中：なぞり -->
+                 <div class="flex flex-col border-x border-black">${nazoriRows}</div>
+                 <!-- 左：うつし -->
+                 <div class="flex flex-col">${utsushiRows}</div>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      return `
+        <div class="print-container bg-white box-border shadow-xl print:shadow-none mx-auto flex items-center justify-center relative" style="width: 210mm; height: 297mm;">
+          
+          <div class="flex flex-row-reverse items-start justify-center">
+            
+            <!-- 名前欄カラム (メインの表の外側・右側) -->
+            <div class="w-[30mm] relative" style="height: ${totalHeight}mm;">
+               
+               <!-- テキスト部分 -->
+               <div class="absolute top-0 left-[0mm] w-[26mm] flex flex-col items-center pt-[8mm]" style="bottom: ${nameBoxHeight}mm;">
+                 <div class="text-[6.5mm] font-bold vertical-rl tracking-[0.3em]">${nameColTitle}</div>
+                 <div class="flex-1"></div>
+                 <div class="text-[6mm] flex flex-col items-center">
+                    <span class="vertical-rl">（</span>
+                    <span class="h-[15mm]"></span>
+                    <span class="vertical-rl">）</span>
+                    <span class="mt-1 vertical-rl">くみ</span>
+                 </div>
+                 <div class="flex-1"></div>
+                 <div class="text-[6mm] flex flex-col items-center mb-[5mm]">
+                    <span class="vertical-rl tracking-[0.2em] font-bold">なまえ</span>
+                 </div>
+               </div>
+               
+               <!-- 名前の長方形枠 -->
+               <div class="absolute bottom-0 left-0 w-[26mm] border-[2px] border-black border-l-0 box-border" style="height: ${nameBoxHeight}mm;"></div>
+               
+            </div>
+            
+            <!-- メインの表（漢字ブロック群） -->
+            <div class="flex flex-row-reverse border-[2px] border-black bg-white" style="height: ${totalHeight}mm;">
+              ${wordBlocks}
+            </div>
+            
+          </div>
+        </div>
+      `;
+    }
+
+    // 4. ストック編集テーブル
+    function renderStockEditor(tabStr) {
+      const isGrade1 = tabStr === 'stock1';
+      const data = isGrade1 ? state.stock1 : state.stock2;
+      const grade = isGrade1 ? 1 : 2;
+      const cols = isGrade1 ? 2 : 3;
+      
+      const headers = Array.from({length: cols}).map((_, i) => 
+        `<th class="p-3 font-bold">漢字 ${i + 1} ${i===0 ? '(右)' : ''}</th>`
+      ).join('');
+
+      const rows = data.map(item => `
+        <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+          <td class="p-3 text-center font-bold text-gray-500">${item.id}</td>
+          ${Array.from({length: cols}).map((_, i) => `
+            <td class="p-3">
+              <input type="text" 
+                     class="border border-gray-300 rounded-lg px-3 py-2 w-full max-w-[140px] focus:outline-none focus:ring-2 focus:ring-sky-400 text-center font-bold text-xl" 
+                     value="${item.words[i] || ''}" 
+                     maxlength="1"
+                     onchange="updateWord(${grade}, ${item.id}, ${i}, this.value)">
+            </td>
+          `).join('')}
+          <td class="p-3 text-center">
+            <button onclick="deleteWord(${grade}, ${item.id})" class="text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded transition-colors">削除</button>
+          </td>
+        </tr>
+      `).join('');
+
+      return `
+        <div class="p-4 md:p-8 w-full max-w-5xl mx-auto no-print">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 gap-4">
+            <h2 class="text-2xl font-bold text-gray-800 border-b-4 border-emerald-400 pb-2 inline-block">${grade}年生の漢字ストック</h2>
+            <div class="flex flex-wrap gap-3">
+              <button onclick="importCSV(${grade})" class="bg-blue-100 text-blue-700 border border-blue-300 px-4 py-2 rounded-full font-bold shadow-sm hover:bg-blue-200 transition-colors flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                CSV読み込み
+              </button>
+              <button onclick="addWord(${grade})" class="bg-emerald-500 text-white px-5 py-2 rounded-full font-bold shadow hover:bg-emerald-600 transition-colors flex items-center gap-2">
+                <span>＋</span> 新しい行を追加
+              </button>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl shadow-md overflow-x-auto border border-gray-100">
+            <table class="w-full text-left border-collapse min-w-[600px]">
+              <thead>
+                <tr class="bg-sky-50 text-sky-800 border-b-2 border-sky-100">
+                  <th class="p-3 w-16 text-center font-bold">番号</th>
+                  ${headers}
+                  <th class="p-3 w-24 text-center font-bold">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows.length > 0 ? rows : `<tr><td colSpan="${cols + 2}" class="text-center p-8 text-gray-400">データがありません</td></tr>`}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    // --- メインレンダリング処理 ---
+    function render() {
+      const app = document.getElementById('app');
+      
+      let content = '';
+      if (state.activeTab === 'print') {
+        content = `
+          <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+            ${renderSettings()}
+            <div class="flex-1 bg-gray-400 overflow-auto print:overflow-visible print:bg-white print:p-0 relative">
+              <div class="flex justify-center min-w-max min-h-max p-4 md:p-8 print:p-0">
+                ${renderPrintLayout()}
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        content = `
+          <div class="flex-1 overflow-auto bg-gray-50">
+            ${renderStockEditor(state.activeTab)}
+          </div>
+        `;
+      }
+
+      app.innerHTML = `
+        <div class="h-screen flex flex-col overflow-hidden">
+          ${renderTabs()}
+          ${content}
+        </div>
+      `;
+    }
+
+    // --- イベントハンドラ群 ---
+    window.changeTab = function(tab) {
+      state.activeTab = tab;
+      render();
+    };
+
+    window.changeGrade = function(grade) {
+      state.grade = grade;
+      const data = grade === 1 ? state.stock1 : state.stock2;
+      state.printId = data[0] ? data[0].id : 1;
+      saveState();
+      render();
+    };
+
+    window.changePrintId = function(id) {
+      state.printId = id;
+      render();
+    };
+
+    window.updateWord = function(grade, id, index, value) {
+      const data = grade === 1 ? state.stock1 : state.stock2;
+      const item = data.find(d => d.id === id);
+      if (item) {
+        item.words[index] = value.charAt(0); // 1文字だけ保存
+        saveState();
+      }
+    };
+
+    window.addWord = function(grade) {
+      const data = grade === 1 ? state.stock1 : state.stock2;
+      const newId = data.length > 0 ? Math.max(...data.map(d => d.id)) + 1 : 1;
+      data.push({ id: newId, words: grade === 1 ? ["", ""] : ["", "", ""] });
+      saveState();
+      render();
+    };
+
+    window.deleteWord = function(grade, id) {
+      if (confirm(`番号 ${id} のデータを削除しますか？`)) {
+        if (grade === 1) {
+          state.stock1 = state.stock1.filter(d => d.id !== id);
+        } else {
+          state.stock2 = state.stock2.filter(d => d.id !== id);
+        }
+        if (state.printId === id) state.printId = 1;
+        saveState();
+        render();
+      }
+    };
+
+    window.importCSV = function(grade) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.csv';
+      input.onchange = function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const readCSV = (encoding) => {
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsText(file, encoding);
+          });
+        };
+
+        readCSV('Shift_JIS').then(text => {
+          if (text.includes('')) {
+            return readCSV('UTF-8');
+          }
+          return text;
+        }).then(text => {
+          const lines = text.split(/\r?\n/);
+          const newData = [];
+          let currentId = 1;
+          const colsNum = grade === 1 ? 2 : 3;
+          
+          for (let line of lines) {
+            if (!line.trim()) continue;
+            const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+            
+            let numIndex = -1;
+            for (let i = 0; i < cols.length; i++) {
+              if (cols[i] && !isNaN(parseInt(cols[i])) && parseInt(cols[i]) > 0 && parseInt(cols[i]) < 1000) {
+                numIndex = i;
+                break;
+              }
+            }
+            
+            if (numIndex !== -1 && cols.length >= numIndex + colsNum) {
+              let extractedWords = [];
+              for (let i = 0; i < colsNum; i++) {
+                // 右詰めでデータを取得
+                extractedWords.push(cols[numIndex + colsNum - i] || "");
+              }
+              
+              if (extractedWords.some(w => w)) {
+                newData.push({
+                  id: currentId++,
+                  words: extractedWords
+                });
+              }
+            }
+          }
+          
+          if (newData.length > 0) {
+            if (confirm(`CSVから ${newData.length} 件のデータを読み込みました。\n\n[OK] 既存のデータをすべて「上書き（置き換え）」する\n[キャンセル] 既存のデータの末尾に「追加」する`)) {
+              if (grade === 1) state.stock1 = newData;
+              else state.stock2 = newData;
+            } else {
+              const targetStock = grade === 1 ? state.stock1 : state.stock2;
+              let maxId = targetStock.length > 0 ? Math.max(...targetStock.map(d => d.id)) : 0;
+              const appendedData = newData.map(d => ({...d, id: ++maxId}));
+              if (grade === 1) state.stock1 = [...state.stock1, ...appendedData];
+              else state.stock2 = [...state.stock2, ...appendedData];
+            }
+            saveState();
+            render();
+            alert('CSVの読み込みが完了しました。');
+          } else {
+            alert('CSVからデータを読み取れませんでした。\n番号の右隣に単語が並んでいる形式か確認してください。');
+          }
+        });
+      };
+      input.click();
+    };
+
+    // 初期化
+    window.onload = render;
+  </script>
+</body>
+</html>
