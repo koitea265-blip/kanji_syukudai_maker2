@@ -282,7 +282,6 @@
       const furiWidth = 10; // ★2年生のふりがな列幅
       const kotobaWidth = 22;
       const headerHeight = grade === 1 ? 52 : 45; // ★2年生のヘッダー高さ
-      const totalHeight = headerHeight + (masuSize * rows);
       const fontSizeNazori = grade === 1 ? 23 : 18.5; // ★なぞり書きの漢字サイズ
       const translateY = grade === 1 ? '1.5mm' : '1.2mm'; // ★フォント特有の上寄りを補正
       const nameBoxHeight = masuSize * 4; // ★名前枠は下から4マス分
@@ -404,10 +403,11 @@
       return `
         <div class="print-container bg-white box-border shadow-xl print:shadow-none mx-auto flex items-center justify-center relative" style="width: 210mm; height: 297mm;">
           
-          <div class="flex flex-row-reverse items-start justify-center">
+          <!-- 表の高さの固定を解除し、中身に合わせて広がるように（justify-centerで横中央揃え） -->
+          <div class="flex flex-row-reverse justify-center">
             
             <!-- 名前欄カラム (メインの表の外側・右側) -->
-            <div class="w-[30mm] relative" style="height: ${totalHeight}mm;">
+            <div class="w-[30mm] relative">
                
                <!-- テキスト部分 -->
                <div class="absolute top-0 left-[0mm] w-[26mm] flex flex-col items-center pt-[8mm]" style="bottom: ${nameBoxHeight}mm;">
@@ -431,7 +431,8 @@
             </div>
             
             <!-- メインの表（漢字ブロック群） -->
-            <div class="flex flex-row-reverse border-[2px] border-black bg-white" style="height: ${totalHeight}mm;">
+            <!-- 高さ固定を解除し、box-contentを追加して罫線の欠落を防ぐ -->
+            <div class="flex flex-row-reverse border-[2px] border-black bg-white box-content">
               ${wordBlocks}
             </div>
             
