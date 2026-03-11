@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>漢字宿題用プリントメーカー</title>
+  <title>漢字宿題用プリントメーカー２（低学年）</title>
   <script src="https://cdn.tailwindcss.com"></script>
   
   <style>
@@ -84,22 +84,45 @@
   <script>
     // --- 初期データ定義 (教科書順、1レコード5文字) ---
     const INITIAL_DATA_1 = [
-      { id: 1, words: ["一", "二", "三", "四", "五"] },
-      { id: 2, words: ["六", "七", "八", "九", "十"] },
-      { id: 3, words: ["日", "月", "木", "山", "川"] },
-      { id: 4, words: ["田", "土", "人", "口", "目"] },
-      { id: 5, words: ["耳", "手", "足", "大", "小"] },
-      { id: 6, words: ["中", "上", "下", "右", "左"] },
-      { id: 7, words: ["女", "男", "子", "水", "火"] },
-      { id: 8, words: ["空", "天", "気", "雨", "白"] },
-      { id: 9, words: ["赤", "青", "音", "出", "入"] },
-      { id: 10, words: ["立", "休", "見", "力", "糸"] },
-      { id: 11, words: ["字", "文", "本", "名", "正"] },
-      { id: 12, words: ["年", "早", "百", "千", "円"] },
-      { id: 13, words: ["車", "王", "玉", "貝", "草"] },
-      { id: 14, words: ["花", "竹", "虫", "犬", "林"] },
-      { id: 15, words: ["森", "村", "町", "校", "学"] },
-      { id: 16, words: ["先", "生", "金", "石", "夕"] }
+      // ひらがな
+      { id: 1, words: ["あ", "い", "う", "え", "お"] },
+      { id: 2, words: ["か", "き", "く", "け", "こ"] },
+      { id: 3, words: ["さ", "し", "す", "せ", "そ"] },
+      { id: 4, words: ["た", "ち", "つ", "て", "と"] },
+      { id: 5, words: ["な", "に", "ぬ", "ね", "の"] },
+      { id: 6, words: ["は", "ひ", "ふ", "へ", "ほ"] },
+      { id: 7, words: ["ま", "み", "む", "め", "も"] },
+      { id: 8, words: ["や", "ゆ", "よ", "", ""] },
+      { id: 9, words: ["ら", "り", "る", "れ", "ろ"] },
+      { id: 10, words: ["わ", "を", "ん", "", ""] },
+      // カタカナ
+      { id: 11, words: ["ア", "イ", "ウ", "エ", "オ"] },
+      { id: 12, words: ["カ", "キ", "ク", "ケ", "コ"] },
+      { id: 13, words: ["サ", "シ", "ス", "セ", "ソ"] },
+      { id: 14, words: ["タ", "チ", "ツ", "テ", "ト"] },
+      { id: 15, words: ["ナ", "ニ", "ヌ", "ネ", "ノ"] },
+      { id: 16, words: ["ハ", "ヒ", "フ", "ヘ", "ホ"] },
+      { id: 17, words: ["マ", "ミ", "ム", "メ", "モ"] },
+      { id: 18, words: ["ヤ", "ユ", "ヨ", "", ""] },
+      { id: 19, words: ["ラ", "リ", "ル", "レ", "ロ"] },
+      { id: 20, words: ["ワ", "ヲ", "ン", "", ""] },
+      // 漢字
+      { id: 21, words: ["一", "二", "三", "四", "五"] },
+      { id: 22, words: ["六", "七", "八", "九", "十"] },
+      { id: 23, words: ["日", "月", "木", "山", "川"] },
+      { id: 24, words: ["田", "土", "人", "口", "目"] },
+      { id: 25, words: ["耳", "手", "足", "大", "小"] },
+      { id: 26, words: ["中", "上", "下", "右", "左"] },
+      { id: 27, words: ["女", "男", "子", "水", "火"] },
+      { id: 28, words: ["空", "天", "気", "雨", "白"] },
+      { id: 29, words: ["赤", "青", "音", "出", "入"] },
+      { id: 30, words: ["立", "休", "見", "力", "糸"] },
+      { id: 31, words: ["字", "文", "本", "名", "正"] },
+      { id: 32, words: ["年", "早", "百", "千", "円"] },
+      { id: 33, words: ["車", "王", "玉", "貝", "草"] },
+      { id: 34, words: ["花", "竹", "虫", "犬", "林"] },
+      { id: 35, words: ["森", "村", "町", "校", "学"] },
+      { id: 36, words: ["先", "生", "金", "石", "夕"] }
     ];
 
     const INITIAL_DATA_2 = [
@@ -140,17 +163,17 @@
     // --- 状態管理 ---
     let state = {
       activeTab: 'print',
-      grade: Number(localStorage.getItem('kanjiGrade_v9')) || 1,
+      grade: Number(localStorage.getItem('kanjiGrade_v10')) || 1,
       printId: 1,
-      stock1: JSON.parse(localStorage.getItem('kanjiStock1_v9')) || INITIAL_DATA_1,
-      stock2: JSON.parse(localStorage.getItem('kanjiStock2_v9')) || INITIAL_DATA_2,
+      stock1: JSON.parse(localStorage.getItem('kanjiStock1_v10')) || INITIAL_DATA_1,
+      stock2: JSON.parse(localStorage.getItem('kanjiStock2_v10')) || INITIAL_DATA_2,
       deleteModal: { show: false, grade: null, id: null } // ★モーダル用の状態を追加
     };
 
     function saveState() {
-      localStorage.setItem('kanjiGrade_v9', state.grade.toString());
-      localStorage.setItem('kanjiStock1_v9', JSON.stringify(state.stock1));
-      localStorage.setItem('kanjiStock2_v9', JSON.stringify(state.stock2));
+      localStorage.setItem('kanjiGrade_v10', state.grade.toString());
+      localStorage.setItem('kanjiStock1_v10', JSON.stringify(state.stock1));
+      localStorage.setItem('kanjiStock2_v10', JSON.stringify(state.stock2));
     }
 
     // ★ KanjiVGのSVGデータをキャッシュするオブジェクト
@@ -224,7 +247,7 @@
         <div class="no-print bg-sky-600 text-white shadow-md z-10 flex-shrink-0">
           <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center px-4">
             <h1 class="text-xl font-bold py-4 pr-8 border-b border-sky-500 sm:border-none w-full sm:w-auto text-center sm:text-left">
-              📝 漢字宿題用プリントメーカー
+              📝 漢字宿題用プリントメーカー２（低学年）
             </h1>
             <div class="flex w-full sm:w-auto overflow-x-auto">
               <button onclick="changeTab('print')" class="px-6 py-4 font-bold whitespace-nowrap transition-colors border-b-4 ${state.activeTab === 'print' ? 'bg-sky-700 border-yellow-400' : 'border-transparent hover:bg-sky-500'}">🖨️ プリント作成 (A4横)</button>
