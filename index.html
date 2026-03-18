@@ -167,13 +167,15 @@
       printId: 1,
       stock1: JSON.parse(localStorage.getItem('kanjiStock1_v10')) || INITIAL_DATA_1,
       stock2: JSON.parse(localStorage.getItem('kanjiStock2_v10')) || INITIAL_DATA_2,
-      deleteModal: { show: false, grade: null, id: null } // ★モーダル用の状態を追加
+      nazoriPosition: localStorage.getItem('kanjiNazoriPos') || 'left', // ★なぞり書きの位置（デフォルトは左）
+      deleteModal: { show: false, grade: null, id: null } // モーダル用の状態
     };
 
     function saveState() {
       localStorage.setItem('kanjiGrade_v10', state.grade.toString());
       localStorage.setItem('kanjiStock1_v10', JSON.stringify(state.stock1));
       localStorage.setItem('kanjiStock2_v10', JSON.stringify(state.stock2));
+      localStorage.setItem('kanjiNazoriPos', state.nazoriPosition);
     }
 
     // ★ KanjiVGのSVGデータをキャッシュするオブジェクト
@@ -280,6 +282,14 @@
             </div>
           </div>
 
+          <div class="mb-6">
+            <label class="block mb-2 font-bold text-gray-600 text-sm">なぞり書きの位置</label>
+            <div class="flex bg-gray-100 p-1 rounded-lg">
+              <button onclick="changeNazoriPosition('left')" class="flex-1 py-2 rounded-md font-bold transition-all ${state.nazoriPosition === 'left' ? 'bg-white shadow text-sky-600' : 'text-gray-500 hover:bg-gray-200'}">左側（推奨）</button>
+              <button onclick="changeNazoriPosition('right')" class="flex-1 py-2 rounded-md font-bold transition-all ${state.nazoriPosition === 'right' ? 'bg-white shadow text-sky-600' : 'text-gray-500 hover:bg-gray-200'}">右側</button>
+            </div>
+          </div>
+
           <div class="mb-8">
             <label class="block mb-2 font-bold text-gray-600 text-sm">プリント番号を選択</label>
             <select onchange="changePrintId(Number(this.value))" class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer">
@@ -347,6 +357,13 @@
         const borderLeft = index !== words.length - 1 ? 'border-l-[2px] border-black' : ''; 
         const blockWidth = masuSize * 2; // なぞり・うつしの2列のみ
 
+        // なぞり書きの位置に応じた設定
+        const isLeft = state.nazoriPosition === 'left';
+        const col1Header = isLeft ? 'うつしがき' : 'なぞりがき';
+        const col2Header = isLeft ? 'なぞりがき' : 'うつしがき';
+        const col1Rows = isLeft ? utsushiRows : nazoriRows;
+        const col2Rows = isLeft ? nazoriRows : utsushiRows;
+
         wordBlocks += `
           <div class="w-[${blockWidth}mm] flex flex-col ${borderLeft} bg-white box-border">
             <div class="h-[${headerHeight}mm] border-b-[2px] border-black relative box-border bg-white flex items-center justify-center">
@@ -366,13 +383,13 @@
             </div>
             <!-- カラム見出し -->
             <div class="h-[${midashiHeight}mm] flex flex-row-reverse border-b border-black bg-white">
-               <div class="w-[${masuSize}mm] flex items-center justify-center text-[2.5mm] font-bold">なぞりがき</div>
-               <div class="w-[${masuSize}mm] border-r border-black flex items-center justify-center text-[2.5mm] font-bold">うつしがき</div>
+               <div class="w-[${masuSize}mm] flex items-center justify-center text-[2.5mm] font-bold">${col1Header}</div>
+               <div class="w-[${masuSize}mm] border-r border-black flex items-center justify-center text-[2.5mm] font-bold">${col2Header}</div>
             </div>
             <!-- マス目群 -->
             <div class="flex flex-row-reverse bg-white flex-1">
-              <div class="flex flex-col">${nazoriRows}</div>
-              <div class="flex flex-col border-r border-black">${utsushiRows}</div>
+              <div class="flex flex-col">${col1Rows}</div>
+              <div class="flex flex-col border-r border-black">${col2Rows}</div>
             </div>
           </div>
         `;
@@ -422,7 +439,7 @@
       const cols = 5; // ★常に5文字
       
       const headers = Array.from({length: cols}).map((_, i) => 
-        `<th class="p-3 font-bold text-center">漢字 ${i + 1} ${i===0 ? '<br><span class="text-xs text-sky-600">(右)</span>' : ''}</th>`
+        `<th class="p-3 font-bold text-center">文字 ${i + 1} ${i===0 ? '<br><span class="text-xs text-sky-600">(右)</span>' : ''}</th>`
       ).join('');
 
       const rows = data.map(item => `
@@ -446,7 +463,7 @@
       return `
         <div class="p-4 md:p-8 w-full max-w-5xl mx-auto no-print">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 gap-4">
-            <h2 class="text-2xl font-bold text-gray-800 border-b-4 border-emerald-400 pb-2 inline-block">${grade}年生の漢字ストック (5文字構成)</h2>
+            <h2 class="text-2xl font-bold text-gray-800 border-b-4 border-emerald-400 pb-2 inline-block">${grade}年生の文字ストック (5文字構成)</h2>
             <div class="flex flex-wrap gap-3">
               <button onclick="importCSV(${grade})" class="bg-blue-100 text-blue-700 border border-blue-300 px-4 py-2 rounded-full font-bold shadow-sm hover:bg-blue-200 transition-colors flex items-center gap-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
@@ -584,6 +601,12 @@
       state.grade = grade;
       const data = grade === 1 ? state.stock1 : state.stock2;
       state.printId = data[0] ? data[0].id : 1;
+      saveState();
+      render();
+    };
+
+    window.changeNazoriPosition = function(pos) {
+      state.nazoriPosition = pos;
       saveState();
       render();
     };
@@ -730,7 +753,7 @@
       const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
       
       // ヘッダー行を作成
-      let csvContent = "番号,漢字1(右),漢字2,漢字3,漢字4,漢字5\n";
+      let csvContent = "番号,文字1(右),文字2,文字3,文字4,文字5\n";
 
       // データを追加 (カンマや改行が含まれても大丈夫なようにダブルクォーテーションで囲む)
       data.forEach(item => {
@@ -746,7 +769,7 @@
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.setAttribute('href', url);
-      link.setAttribute('download', `${grade}年生_漢字ストック.csv`);
+      link.setAttribute('download', `${grade}年生_文字ストック.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
